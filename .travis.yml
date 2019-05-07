@@ -1,0 +1,9 @@
+dist: xenial
+language: python
+python:
+  - "3.7"
+install:
+  - python setup.py build
+  - python setup.py develop
+script:
+  - pytest
