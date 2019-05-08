@@ -1,0 +1,26 @@
+import click
+
+from pyring.one_time import ring_verify
+from pyring.serialize import import_pem
+
+
+@click.command()
+@click.argument("message", type=click.File("rb"))
+@click.argument("ring-signature-file", type=click.File("r"))
+def verify(message, ring_signature_file):
+    """Verify a one-time ring signature of a given file."""
+    # Load the message
+    message = message.read()
+
+    # Deserialize the ring signature
+    ring_signature = import_pem(ring_signature_file.read())
+
+    # Verify the ring signature
+    if ring_verify(message, ring_signature):
+        click.echo("Valid ring signature.")
+    else:
+        click.echo("Invalid ring signature.")
+
+
+if __name__ == "__main__":
+    verify()

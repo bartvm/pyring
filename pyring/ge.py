@@ -50,6 +50,9 @@ class Point:
     def __repr__(self) -> str:
         return f"Point({self.as_bytes()})"
 
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
     def as_bytes(self) -> bytes:
         return bytes(self.data)
 

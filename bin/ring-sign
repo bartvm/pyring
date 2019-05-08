@@ -1,0 +1,91 @@
+import random
+import tarfile
+
+import click
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+
+from pyring.sc25519 import Scalar
+from pyring.ge import Point
+from pyring.one_time import PrivateKey, ring_sign
+from pyring.serialize import export_pem
+
+
+def _cryptography_to_scalar(private_key):
+    return Scalar(
+        private_key.private_bytes(
+            serialization.Encoding.Raw,
+            serialization.PrivateFormat.Raw,
+            serialization.NoEncryption(),
+        )
+    )
+
+
+def _cryptography_to_point(public_key):
+    return Point(
+        public_key.public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        )
+    )
+
+
+@click.command()
+@click.argument("message", type=click.File("rb"))
+@click.argument("private-key-file", type=click.File("rb"))
+@click.argument("public-keys-files", nargs=-1, type=click.File("rb"))
+@click.option("--password", default=None,
+              help="Optional password to decrypt private key.")
+def sign(message, private_key_file, public_keys_files, password):
+    """Generate a one-time ring signature.
+
+    Signs a given message using a given private key and a set of of
+    public keys. Note that public keys can also be given as .tar or .tar.gz
+    files.
+    """
+    # Read the message
+    message = message.read()
+
+    # Load the private key
+    if password is not None:
+        password = password.encode()
+    private_key = serialization.load_pem_private_key(
+        private_key_file.read(), password, default_backend()
+    )
+
+    # Load the public keys
+    public_keys = []
+    for public_key_file in public_keys_files:
+        if tarfile.is_tarfile(public_key_file.name):
+            with tarfile.open(fileobj=public_key_file) as f:
+                for tarinfo in f:
+                    public_key = serialization.load_pem_public_key(
+                        f.extractfile(tarinfo).read(), default_backend()
+                    )
+                    public_keys.append(public_key)
+        else:
+            public_key = serialization.load_pem_public_key(
+                public_key_file.read(), default_backend()
+            )
+            public_keys.append(public_key)
+
+    # Derive the public key to check if it is in the list
+    signer_private_key = _cryptography_to_scalar(private_key)
+    signer_public_key = PrivateKey(signer_private_key).public_key().point
+    public_keys = [_cryptography_to_point(pk) for pk in public_keys]
+    if signer_public_key not in public_keys:
+        print("noooo")
+        raise click.UsageError("your public key was not found")
+
+    # Shuffle the public keys
+    random.SystemRandom().shuffle(public_keys)
+    signer_index = public_keys.index(signer_public_key)
+
+    # Convert the keys into scalars/points and sign the message
+    signature = ring_sign(message, public_keys, signer_private_key, signer_index)
+
+    # Serialize the ring signature
+    click.echo(export_pem(signature))
+
+
+if __name__ == "__main__":
+    sign()

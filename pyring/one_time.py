@@ -3,7 +3,6 @@ from __future__ import annotations
 import dataclasses
 import functools
 import operator
-import random
 from typing import ByteString, List
 
 from .ge import Point, G, hash_to_scalar
@@ -25,6 +24,13 @@ class PrivateKey:
         return cls(Scalar(bytes(data)))
 
     def public_key(self) -> PublicKey:
+        # Note that this is not a standard Ed25519 public key
+        # The regular method described in RFC8032 involves hashing
+        # the secret scalar and pruning bits.
+        # (c.f. https://tools.ietf.org/html/rfc8032#section-5.1.5 and
+        # https://github.com/openssl/openssl/blob/36e619d70f86f9dd52c57b6ac8a3bfea3c0a2745/crypto/ec/curve25519.c#L5544)
+        # but this destroys the associativity and distributivity
+        # properties needed for the ring construction
         return PublicKey(self.scalar * G)
 
     def key_image(self) -> Point:
@@ -46,17 +52,14 @@ class RingSignature:
     key image of the signer's public key, and the two rings.
     """
 
-    public_keys: List[PublicKey]
+    public_keys: List[Point]
     key_image: Point
     c: List[Scalar]
     r: List[Scalar]
 
 
 def ring_sign(
-    message: ByteString,
-    public_keys: List[PublicKey],
-    private_key: PrivateKey,
-    key_index: int,
+    message: ByteString, public_keys: List[Point], private_key: Scalar, key_index: int
 ) -> RingSignature:
     """Sign the given message.
 
@@ -75,9 +78,9 @@ def ring_sign(
         A ring signature.
     """
     # We follow the notation from the CryptoNote white paper, section 4.4
-    x = private_key.scalar
+    x = private_key
     s = key_index
-    I = private_key.key_image()  # noqa: E741
+    I = PrivateKey(private_key).key_image()  # noqa: E741
     H_s = hash_to_scalar
 
     def H_p(point: Point) -> Point:
@@ -87,8 +90,7 @@ def ring_sign(
 
     c = []
     r = []
-    for i, public_key in enumerate(public_keys):
-        P_i = public_key.point
+    for i, P_i in enumerate(public_keys):
         if i == key_index:
             q_s = Scalar.random()
             buffer_ += (q_s * G).as_bytes()
@@ -121,8 +123,7 @@ def ring_verify(message: ByteString, signature: RingSignature) -> bool:
         return point.hash_to_point()
 
     buffer_ = bytearray(message)
-    for i, (public_key, r_i, c_i) in enumerate(zip(public_keys, r, c)):
-        P_i = public_key.point
+    for i, (P_i, r_i, c_i) in enumerate(zip(public_keys, r, c)):
         buffer_ += (r_i * G + c_i * P_i).as_bytes()
         buffer_ += (r_i * H_p(P_i) + c_i * I).as_bytes()
 

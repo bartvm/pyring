@@ -1,0 +1,58 @@
+import pathlib
+
+import click
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
+from pyring.one_time import PrivateKey
+
+
+@click.command()
+def keygen():
+    """Generate a public-private key pair.
+
+    The resulting keys can be used to generate one-time ring signatures.
+    """
+    default_secret_file = pathlib.Path.cwd().joinpath("ringkey")
+    secret_file = click.prompt(
+        "File in which to store private key", default=default_secret_file
+    )
+
+    public_file = click.prompt(
+        "File in which to store public key",
+        default=pathlib.Path(secret_file).with_suffix(".pub"),
+    )
+
+    no_password = "empty for no passphrase"
+    password = click.prompt(
+        "Passphrase", default=no_password, confirmation_prompt=True, hide_input=True
+    )
+
+    secret_key = PrivateKey.generate()
+    public_key = secret_key.public_key()
+
+    pk = ed25519.Ed25519PublicKey.from_public_bytes(bytes(public_key.point.data))
+    sk = ed25519.Ed25519PrivateKey.from_private_bytes(bytes(secret_key.scalar.data))
+
+    pk_pem = pk.public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    if password != no_password:
+        encryption_algorithm = serialization.BestAvailableEncryption(password.encode())
+    else:
+        encryption_algorithm = serialization.NoEncryption()
+    sk_pem = sk.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        encryption_algorithm,
+    )
+
+    with open(secret_file, "w") as f:
+        f.write(sk_pem.decode())
+    with open(public_file, "w") as f:
+        f.write(pk_pem.decode())
+
+
+if __name__ == "__main__":
+    keygen()

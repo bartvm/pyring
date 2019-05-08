@@ -23,12 +23,12 @@ def test_one_time():
     for key_index in range(num_keys):
         private_key = PrivateKey.generate()
         public_key = private_key.public_key()
-        public_keys.append(public_key)
+        public_keys.append(public_key.point)
         if key_index == signer_index:
             signer_key = private_key
 
     message = os.urandom(random.randint(1, 500))
-    signature = ring_sign(message, public_keys, signer_key, signer_index)
+    signature = ring_sign(message, public_keys, signer_key.scalar, signer_index)
 
     # Check the signature works
     assert len(signature.c) == num_keys
@@ -39,9 +39,7 @@ def test_one_time():
 
     # Check it does not work for other messages and such
     assert not ring_verify(message + b"0", signature)
-    wrong_public_keys = dataclasses.replace(
-        signature, public_keys=public_keys[::-1]
-    )
+    wrong_public_keys = dataclasses.replace(signature, public_keys=public_keys[::-1])
     assert not ring_verify(message, wrong_public_keys)
     wrong_image = dataclasses.replace(signature, key_image=2 * signature.key_image)
     assert not ring_verify(message, wrong_image)

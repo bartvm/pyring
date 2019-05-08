@@ -1,4 +1,5 @@
 import distutils
+import glob
 import os
 import pathlib
 from typing import List
@@ -28,11 +29,13 @@ class build_ext(_build_ext):
         assert cvs
         prev = cvs.copy()
         if "LDSHARED" not in os.environ:
-            cvs["LDSHARED"] = " ".join(flag for flag in cvs["LDSHARED"].split(" ")
-                                       if not flag.startswith("-L"))
+            cvs["LDSHARED"] = " ".join(
+                flag for flag in cvs["LDSHARED"].split(" ") if not flag.startswith("-L")
+            )
         if "CFLAGS" not in os.environ:
-            cvs["CFLAGS"] = " ".join(flag for flag in cvs["CFLAGS"].split(" ")
-                                     if not flag.startswith("-I"))
+            cvs["CFLAGS"] = " ".join(
+                flag for flag in cvs["CFLAGS"].split(" ") if not flag.startswith("-I")
+            )
 
         # Build the bindings
         super().run()
@@ -52,22 +55,23 @@ class build_clib(_build_clib):
         build_temp = pathlib.Path(self.build_temp).resolve()
         build_temp.mkdir(parents=True, exist_ok=True)
 
-        src_dir = pathlib.Path("libsodium").resolve()
-
-        # We build and install in the temporary directory
-        root = os.getcwd()
         # We use the master branch because we need features from the
-        # unreleased 1.0.18 version, but the master branch requires
-        # us to run autotools.
+        # unreleased 1.0.18 version, so we build from source
+        src_dir = pathlib.Path("libsodium").resolve()
+        root_dir = os.getcwd()
+
+        # The master branch requires us to run autotools
         os.chdir(src_dir)
         self.spawn(["./autogen.sh"])
+
+        # Now build libsodium statically (to avoid linker issues)
         os.chdir(build_temp)
         self.spawn([f"{src_dir}/configure", f"--prefix={build_temp}",
-                    # Link statically to avoid loading issues
                     "--disable-shared", "--with-pic"])
         self.spawn(["make"])
         self.spawn(["make", "install"])
-        os.chdir(root)
+
+        os.chdir(root_dir)
 
 
 with open("README.md", "r") as fh:
@@ -97,4 +101,5 @@ setuptools.setup(
     setup_requires=["cffi"],
     zip_safe=False,
     install_requires=["cryptography", "cffi"],
+    scripts=glob.glob("bin/*"),
 )
