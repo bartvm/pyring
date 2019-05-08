@@ -12,9 +12,10 @@ This implementation follows the white-paper and CryptoNote implementation closel
 
 ## Installation and usage
 
-Clone the repository and use `setup.py` to install the package.
+Clone the repository (including the Sodium submodule) and use `setup.py` to install the package.
 
 ```bash
+git clone --recurse-submodules https://github.com/bartvm/pyring.git
 python setup.py install
 ```
 
