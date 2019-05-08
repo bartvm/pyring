@@ -28,3 +28,7 @@ head -c 100 < /dev/urandom > message  # Generate a random message
 ring-sign message ringkey ringkey.pub ringkey2.pub > ring.sig  # Sign the message against two public keys
 ring-verify message - < ring.sig  # Verify that the signature is correct
 ```
+
+## Disclaimer
+
+This is not an officially supported Google product.
