@@ -1,10 +1,14 @@
 # Ring signatures
 
-Implementation of one-time ring signatures in Python. [Ring signatures](https://en.wikipedia.org/wiki/Ring_signature) allow a user to sign a message as a member of a group, without revealing their identity. One-time ring signatures are a type of ring signature where multiple signatures of the same user can be identified as such. One-time ring signatures were described in the [CryptoNote whitepaper](https://cryptonote.org/whitepaper.pdf) and implemented in, e.g., [Bytecoin](https://github.com/bcndev/bytecoin/blob/07b8bf2a3e327bda902fd00ffbf3bdfcc7f79eb9/src/crypto/crypto.cpp#L235-L270).
+This is an imlementation of one-time ring signatures in Python. [Ring signatures](https://en.wikipedia.org/wiki/Ring_signature) allow a user to sign a message as a member of a group, without revealing their identity. One-time ring signatures are a type of ring signature where multiple signatures of the same user can be identified as such.
+
+One-time ring signatures are described in a [CryptoNote whitepaper](https://cryptonote.org/whitepaper.pdf) and the accompanying [CrypteNote standard](https://cryptonote.org/cns/cns002.txt) (CC BY-SA 3.0). An implementation [can be found](https://github.com/cryptonotefoundation/cryptonote/blob/8edd998304431c219b432194b7a3847b44b576c3/src/crypto/crypto.cpp#L329-L389) in the reference code of the CryptoNote protocol (MIT/X11).
 
 ## Implementation
 
-This implementation follows the white-paper and Bytecoin implementation. The arithmetic is performed using [Sodium](https://libsodium.gitbook.io/doc/). The code requires version 1.0.18 of Sodium, which has not been released yet. Hence, a bleeding edge version of Sodium is packaged along with the Python code.
+This implementation follows the white-paper and CryptoNote implementation closely. The arithmetic is performed on the Ed25519 curve using [Sodium](https://libsodium.gitbook.io/doc/advanced/point-arithmetic) (ISC licensed). 
+
+*Note that the code requires version 1.0.18 of Sodium, which has not been released yet. Hence, a bleeding edge version of Sodium is packaged along with the Python code.*
 
 ## Installation and usage
 
