@@ -6,9 +6,7 @@ One-time ring signatures are described in a [CryptoNote whitepaper](https://cryp
 
 ## Implementation
 
-This implementation follows the white-paper and CryptoNote implementation closely. The arithmetic is performed on the Ed25519 curve using [Sodium](https://libsodium.gitbook.io/doc/advanced/point-arithmetic) (ISC licensed). 
-
-*Note that the code requires version 1.0.18 of Sodium, which has not been released yet. Hence, a bleeding edge version of Sodium is packaged along with the Python code.*
+This implementation follows the white-paper and CryptoNote implementation closely. The arithmetic is performed on the Ed25519 curve using [Sodium](https://libsodium.gitbook.io/doc/advanced/point-arithmetic) (ISC licensed). Sodium 1.0.18 is included with the package.
 
 ## Installation and usage
 
@@ -29,3 +27,7 @@ head -c 100 < /dev/urandom > message  # Generate a random message
 ring-sign message ringkey ringkey.pub ringkey2.pub > ring.sig  # Sign the message against two public keys
 ring-verify message - < ring.sig  # Verify that the signature is correct
 ```
+
+## Disclaimer
+
+This is not an officially supported Google product.
