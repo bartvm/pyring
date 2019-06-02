@@ -69,14 +69,9 @@ class build_clib(_build_clib):
         build_temp = pathlib.Path(self.build_temp).resolve()
         build_temp.mkdir(parents=True, exist_ok=True)
 
-        # We use the master branch because we need features from the
-        # unreleased 1.0.18 version, so we build from source
+        # We package a stable version of libsodium with the library
         src_dir = pathlib.Path("libsodium").resolve()
         root_dir = os.getcwd()
-
-        # The master branch requires us to run autotools
-        os.chdir(src_dir)
-        self.spawn(["./autogen.sh"])
 
         # Now build libsodium statically (to avoid linker issues)
         os.chdir(build_temp)
@@ -94,7 +89,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyring",
-    version="0.0.1",
+    version="0.0.2",
     author="Bart van Merriënboer",
     author_email="bart.vanmerrienboer@gmail.com",
     description="Ring signatures",
