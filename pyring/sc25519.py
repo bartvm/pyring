@@ -127,11 +127,7 @@ class Scalar:
         return other - self
 
     def __mul__(self, other: ScalarLike) -> Scalar:
-        """Multiply two scalars.
-
-        The multiplication function is not exposed in libsodium, so instead we
-        distribute sc25519_muladd as a CFFI extension.
-        """
+        """Multiply two scalars modulus L."""
         if isinstance(other, int):
             other = Scalar(other)
         elif not isinstance(other, Scalar):
