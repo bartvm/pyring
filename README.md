@@ -2,7 +2,7 @@
 
 This is an imlementation of one-time ring signatures in Python. [Ring signatures](https://en.wikipedia.org/wiki/Ring_signature) allow a user to sign a message as a member of a group, without revealing their identity. One-time ring signatures are a type of ring signature where multiple signatures of the same user can be identified as such.
 
-One-time ring signatures are described in a [CryptoNote whitepaper](https://cryptonote.org/whitepaper.pdf) and the accompanying [CrypteNote standard](https://cryptonote.org/cns/cns002.txt) (CC BY-SA 3.0). An implementation [can be found](https://github.com/cryptonotefoundation/cryptonote/blob/8edd998304431c219b432194b7a3847b44b576c3/src/crypto/crypto.cpp#L329-L389) in the reference code of the CryptoNote protocol (MIT/X11).
+One-time ring signatures are described in a [CryptoNote whitepaper](https://web.archive.org/web/20190624143658/https://cryptonote.org/whitepaper.pdf) and the accompanying [CrypteNote standard](https://web.archive.org/web/20160514065822/https://cryptonote.org/cns/cns002.txt) (CC BY-SA 3.0). An implementation [can be found](https://github.com/cryptonotefoundation/cryptonote/blob/8edd998304431c219b432194b7a3847b44b576c3/src/crypto/crypto.cpp#L329-L389) in the reference code of the CryptoNote protocol (MIT/X11).
 
 ## Implementation
 
