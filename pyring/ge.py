@@ -157,16 +157,16 @@ O = Point()  # noqa: 741
 G = Generator()
 
 
-def hash_to_scalar(data: ByteLike, hash_name: str = "sha3_512") -> int:
-    """Hash data to an integer mod Q.
+def hash_to_scalar(data: ByteLike, hash_name: str = "sha3_512") -> Scalar:
+    """Hash data to an integer mod L.
 
     Args:
         data: An object convertible to bytes that will be hashed.
         hash: The hashing algorithm to use.
 
     Returns:
-        An integer in the range [0, ..., Q - 1] where Q = 2^255 - 19.
+        An integer in the range [0, ..., L - 1] where Q = 2^255 - 19.
 
     """
     digest = hashlib.new(hash_name, bytes(data)).digest()
-    return int.from_bytes(digest, "little") % Q
+    return Scalar.from_unreduced(digest)

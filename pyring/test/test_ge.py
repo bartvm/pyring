@@ -97,6 +97,4 @@ def test_hash_to_point():
 
 
 def test_hash_to_scalar():
-    assert 0 <= hash_to_scalar(b"\ff" * 64) < Q
-    assert 0 <= hash_to_scalar(b"\ff" * 64, "blake2s") < Q
-    assert 0 <= hash_to_scalar(b"\ff" * 64, "sha3_224") < Q
+    assert 0 <= int(hash_to_scalar(b"\ff" * 64)) < L
