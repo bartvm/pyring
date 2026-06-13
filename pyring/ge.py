@@ -26,20 +26,21 @@ Attributes:
 from __future__ import annotations
 
 import hashlib
-from typing import Any, cast
+from collections.abc import Buffer
+from typing import Any
 
-from .utils import as_array, ByteLike
-from .sc25519 import ScalarLike, Scalar
-from ._sodium import lib
+import nacl.bindings as sodium
+
+from .sc25519 import Scalar, ScalarLike
 
 # Calculate the base point (generator) so that it can be used in additions/subtractions
 # We need to find 4 / 5 on the prime field defined by prime q = 2^255 - 19
 Q = 2 ** 255 - 19
 # NB: Fermat's little theorem
 _GENERATOR_DATA = (4 * pow(5, Q - 2, Q)).to_bytes(
-    lib.crypto_core_ed25519_BYTES, "little"
+    sodium.crypto_core_ed25519_BYTES, "little"
 )
-_IDENTITY_DATA = (1).to_bytes(lib.crypto_core_ed25519_BYTES, "little")
+_IDENTITY_DATA = (1).to_bytes(sodium.crypto_core_ed25519_BYTES, "little")
 
 
 class Point:
@@ -56,57 +57,43 @@ class Point:
 
     __slots__ = ["data"]
 
-    def __init__(self, data: ByteLike = _IDENTITY_DATA) -> None:
-        if len(data) != lib.crypto_core_ed25519_BYTES:
-            raise ValueError(f"data must be {lib.crypto_core_ed25519_BYTES} bytes")
-        self.data = as_array(data)
+    def __init__(self, data: Buffer = _IDENTITY_DATA) -> None:
+        if len(data) != sodium.crypto_core_ed25519_BYTES:
+            raise ValueError(f"data must be {sodium.crypto_core_ed25519_BYTES} bytes")
+        self.data = bytes(data)
 
     def __repr__(self) -> str:
         return f"Point({self.as_bytes()})"
 
     def __hash__(self) -> int:
-        return hash(repr(self))
+        return hash(self.data)
 
     def as_bytes(self) -> bytes:
-        return bytes(self.data)
+        return self.data
 
     @classmethod
-    def from_uniform(cls, n: ByteLike) -> Point:
+    def from_uniform(cls, n: Buffer) -> Point:
         """Map a set of 32-bytes to a point on the curve."""
-        out = cls()
-        if len(n) != lib.crypto_core_ed25519_UNIFORMBYTES:
+        if len(n) != sodium.crypto_core_ed25519_BYTES:
             raise ValueError(
-                f"uniform data must be {lib.crypto_core_ed25519_UNIFORMBYTES} bytes"
+                f"uniform data must be {sodium.crypto_core_ed25519_BYTES} bytes"
             )
-        lib.crypto_core_ed25519_from_uniform(out.data, as_array(n))
-        return out
-
-    @classmethod
-    def from_hash(cls, n: ByteLike) -> Point:
-        out = cls()
-        if len(n) != lib.crypto_core_ed25519_HASHBYTES:
-            raise ValueError(f"hash must be {lib.crypto_core_ed25519_HASHBYTES} bytes")
-        lib.crypto_core_ed25519_from_hash(out.data, as_array(n))
-        return out
+        return cls(sodium.crypto_core_ed25519_from_uniform(bytes(n)))
 
     def is_valid(self) -> bool:
-        return cast(bool, lib.crypto_core_ed25519_is_valid_point(self.data) == 1)
+        return sodium.crypto_core_ed25519_is_valid_point(self.data)
 
     def __add__(self, other: Point) -> Point:
         """Add two points."""
         if not isinstance(other, Point):
             return NotImplemented
-        out = Point()
-        lib.crypto_core_ed25519_add(out.data, self.data, other.data)
-        return out
+        return Point(sodium.crypto_core_ed25519_add(self.data, other.data))
 
     def __sub__(self, other: Point) -> Point:
         """Subtract two points."""
         if not isinstance(other, Point):
             return NotImplemented
-        out = Point()
-        lib.crypto_core_ed25519_sub(out.data, self.data, other.data)
-        return out
+        return Point(sodium.crypto_core_ed25519_sub(self.data, other.data))
 
     def __rmul__(self, other: ScalarLike) -> Point:
         """Left-multiply the point by a scalar."""
@@ -114,24 +101,19 @@ class Point:
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        out = Point()
-        lib.crypto_scalarmult_ed25519_noclamp(out.data, other.data, self.data)
-        return out
+        return Point(sodium.crypto_scalarmult_ed25519_noclamp(other.data, self.data))
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Point):
-            return bytes(self.data) == bytes(other.data)
+            return self.data == other.data
         else:
             return False
 
-    def hash_to_point(self, hash_name: str = "sha3_512") -> Point:
-        digest = hashlib.new(hash_name, bytes(self.data)).digest()
-        if len(digest) == lib.crypto_core_ed25519_HASHBYTES:
-            return Point.from_hash(digest)
-        elif len(digest) == lib.crypto_core_ed25519_UNIFORMBYTES:
-            return Point.from_uniform(digest)
-        else:
+    def hash_to_point(self, hash_name: str = "sha3_256") -> Point:
+        digest = hashlib.new(hash_name, self.data).digest()
+        if len(digest) != sodium.crypto_core_ed25519_BYTES:
             raise ValueError(f"hash function returned {len(digest)} bytes")
+        return Point.from_uniform(digest)
 
 
 class Generator(Point):
@@ -148,16 +130,14 @@ class Generator(Point):
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        out = Point()
-        lib.crypto_scalarmult_ed25519_base_noclamp(out.data, other.data)
-        return out
+        return Point(sodium.crypto_scalarmult_ed25519_base_noclamp(other.data))
 
 
 O = Point()  # noqa: 741
 G = Generator()
 
 
-def hash_to_scalar(data: ByteLike, hash_name: str = "sha3_512") -> Scalar:
+def hash_to_scalar(data: Buffer, hash_name: str = "sha3_512") -> Scalar:
     """Hash data to an integer mod L.
 
     Args:
@@ -165,7 +145,7 @@ def hash_to_scalar(data: ByteLike, hash_name: str = "sha3_512") -> Scalar:
         hash: The hashing algorithm to use.
 
     Returns:
-        An integer in the range [0, ..., L - 1] where Q = 2^255 - 19.
+        A scalar in the range [0, ..., L - 1].
 
     """
     digest = hashlib.new(hash_name, bytes(data)).digest()

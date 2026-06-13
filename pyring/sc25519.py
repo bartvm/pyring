@@ -23,10 +23,11 @@ Attributes:
 """
 from __future__ import annotations
 
-from typing import Any, Union
+import os
+from collections.abc import Buffer
+from typing import Any
 
-from .utils import as_array, ByteLike
-from ._sodium import lib
+import nacl.bindings as sodium
 
 L = 2 ** 252 + 27742317777372353535851937790883648493
 
@@ -43,46 +44,44 @@ class Scalar:
     an arithmetic operation.
 
     Attributes:
-        data: The FFI array storing the scalar. Numbers are stored as 32-byte
-            unsigned integers in little-endian format.
+        data: The scalar stored as a 32-byte unsigned integer in little-endian
+            format.
     """
 
     __slots__ = ["data"]
 
-    def __init__(self, n: Union[ByteLike, int] = 0) -> None:
+    def __init__(self, n: Buffer | int = 0) -> None:
         """Construct a scalar.
 
         Args:
-            n: The 32-byte array or ffi array to initialize this scalar with. If an
-                integer is passed it will be converted to bytes (without applying the
-                modulo operator).
+            n: The 32-byte array to initialize this scalar with. If an integer is
+                passed it will be converted to bytes (without applying the modulo
+                operator).
         """
         if isinstance(n, int):
-            n = n.to_bytes(lib.crypto_core_ed25519_SCALARBYTES, "little")
-        if len(n) != lib.crypto_core_ed25519_SCALARBYTES:
+            n = n.to_bytes(sodium.crypto_core_ed25519_SCALARBYTES, "little")
+        if len(n) != sodium.crypto_core_ed25519_SCALARBYTES:
             raise ValueError(
-                f"scalar must be {lib.crypto_core_ed25519_SCALARBYTES} bytes"
+                f"scalar must be {sodium.crypto_core_ed25519_SCALARBYTES} bytes"
             )
-        self.data = as_array(n)
+        self.data = bytes(n)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({int(self)})"
 
     @classmethod
-    def from_unreduced(cls, n: ByteLike) -> Scalar:
+    def from_unreduced(cls, n: Buffer) -> Scalar:
         """Reduces a 64-byte scalar to a 32-byte scalar by applying mod L.
 
         Returns:
             A scalar in the range [0, ..., L - 1].
         """
-        if len(n) != lib.crypto_core_ed25519_NONREDUCEDSCALARBYTES:
+        if len(n) != sodium.crypto_core_ed25519_NONREDUCEDSCALARBYTES:
             raise ValueError(
                 "unreduced scalar must be "
-                f"{lib.crypto_core_ed25519_NONREDUCEDSCALARBYTES} bytes"
+                f"{sodium.crypto_core_ed25519_NONREDUCEDSCALARBYTES} bytes"
             )
-        out = cls()
-        lib.crypto_core_ed25519_scalar_reduce(out.data, as_array(n))
-        return out
+        return cls(sodium.crypto_core_ed25519_scalar_reduce(bytes(n)))
 
     @classmethod
     def random(cls) -> Scalar:
@@ -91,21 +90,19 @@ class Scalar:
         Returns:
             A scalar in the range [1, ..., L - 1].
         """
-        out = cls()
-        lib.crypto_core_ed25519_scalar_random(out.data)
-        return out
+        return cls.from_unreduced(
+            os.urandom(sodium.crypto_core_ed25519_NONREDUCEDSCALARBYTES)
+        )
 
     def __int__(self) -> int:
-        return int.from_bytes(bytes(self.data), "little")
+        return int.from_bytes(self.data, "little")
 
     def __add__(self, other: ScalarLike) -> Scalar:
         if isinstance(other, int):
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        out = Scalar()
-        lib.crypto_core_ed25519_scalar_add(out.data, self.data, other.data)
-        return out
+        return Scalar(sodium.crypto_core_ed25519_scalar_add(self.data, other.data))
 
     def __radd__(self, other: ScalarLike) -> Scalar:
         return self + other
@@ -115,9 +112,7 @@ class Scalar:
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        out = Scalar()
-        lib.crypto_core_ed25519_scalar_sub(out.data, self.data, other.data)
-        return out
+        return Scalar(sodium.crypto_core_ed25519_scalar_sub(self.data, other.data))
 
     def __rsub__(self, other: ScalarLike) -> Scalar:
         if isinstance(other, int):
@@ -132,9 +127,7 @@ class Scalar:
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        out = Scalar()
-        lib.crypto_core_ed25519_scalar_mul(out.data, self.data, other.data)
-        return out
+        return Scalar(sodium.crypto_core_ed25519_scalar_mul(self.data, other.data))
 
     def __rmul__(self, other: ScalarLike) -> Scalar:
         return self * other
@@ -148,8 +141,7 @@ class Scalar:
             other = Scalar(other)
         elif not isinstance(other, Scalar):
             return NotImplemented
-        inverted = Scalar()
-        lib.crypto_core_ed25519_scalar_invert(inverted.data, other.data)
+        inverted = Scalar(sodium.crypto_core_ed25519_scalar_invert(other.data))
         if self == 1:
             return inverted
         return self * inverted
@@ -162,17 +154,15 @@ class Scalar:
         return other / self
 
     def __neg__(self) -> Scalar:
-        out = Scalar()
-        lib.crypto_core_ed25519_scalar_negate(out.data, self.data)
-        return out
+        return Scalar(sodium.crypto_core_ed25519_scalar_negate(self.data))
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, int):
             return int(self) == other
         elif isinstance(other, Scalar):
-            return bytes(self.data) == bytes(other.data)
+            return self.data == other.data
         else:
             return False
 
 
-ScalarLike = Union[Scalar, int]
+ScalarLike = Scalar | int

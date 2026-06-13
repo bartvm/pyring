@@ -17,16 +17,16 @@ import string
 import textwrap
 import uuid
 
-import pyasn1.codec.der.encoder
 import pyasn1.codec.der.decoder
+import pyasn1.codec.der.encoder
 import pyasn1.codec.native.decoder
 from pyasn1.type.namedtype import NamedType, NamedTypes
-from pyasn1.type.univ import Sequence, SequenceOf, OctetString, ObjectIdentifier
+from pyasn1.type.univ import (ObjectIdentifier, OctetString, Sequence,
+                              SequenceOf)
 
 from .ge import Point
-from .sc25519 import Scalar
 from .one_time import RingSignature
-
+from .sc25519 import Scalar
 
 _PEM_OPENING = "-----BEGIN RING SIGNATURE-----"
 _PEM_CLOSING = "-----END RING SIGNATURE-----"
@@ -55,12 +55,12 @@ def export_pem(ring_signature: RingSignature) -> str:
     der = pyasn1.codec.der.encoder.encode(
         pyasn1.codec.native.decoder.decode(
             {
-                "key_image": bytes(ring_signature.key_image.data),
+                "key_image": ring_signature.key_image.data,
                 "public_keys": [
-                    bytes(public_key.data) for public_key in ring_signature.public_keys
+                    public_key.data for public_key in ring_signature.public_keys
                 ],
-                "r": [bytes(r.data) for r in ring_signature.r],
-                "c": [bytes(c.data) for c in ring_signature.c],
+                "r": [r.data for r in ring_signature.r],
+                "c": [c.data for c in ring_signature.c],
             },
             asn1Spec=RingSignatureSchema(),
         )

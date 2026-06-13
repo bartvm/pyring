@@ -17,9 +17,9 @@ from __future__ import annotations
 import dataclasses
 import functools
 import operator
-from typing import ByteString, List
+from collections.abc import Buffer
 
-from .ge import Point, G, hash_to_scalar
+from .ge import G, Point, hash_to_scalar
 from .sc25519 import Scalar
 
 
@@ -34,7 +34,7 @@ class PrivateKey:
         return cls(Scalar.random())
 
     @classmethod
-    def from_private_bytes(cls, data: ByteString) -> PrivateKey:
+    def from_private_bytes(cls, data: Buffer) -> PrivateKey:
         return cls(Scalar(bytes(data)))
 
     def public_key(self) -> PublicKey:
@@ -66,19 +66,16 @@ class RingSignature:
     key image of the signer's public key, and the two rings.
     """
 
-    public_keys: List[Point]
+    public_keys: list[Point]
     key_image: Point
-    c: List[Scalar]
-    r: List[Scalar]
+    c: list[Scalar]
+    r: list[Scalar]
 
 
 def ring_sign(
-    message: ByteString, public_keys: List[Point], private_key: Scalar, key_index: int
+    message: Buffer, public_keys: list[Point], private_key: Scalar, key_index: int
 ) -> RingSignature:
     """Sign the given message.
-
-    As part of the signature generation, the public keys are shuffled so that the
-    ordering holds no information about the identity of the signer.
 
     Args:
         message: The message to sign.
@@ -122,7 +119,7 @@ def ring_sign(
     return RingSignature(public_keys, I, c, r)
 
 
-def ring_verify(message: ByteString, signature: RingSignature) -> bool:
+def ring_verify(message: Buffer, signature: RingSignature) -> bool:
     """Verify that a signature is valid for the given message.
 
     Args:

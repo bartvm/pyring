@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import nacl.bindings as sodium
 import pytest
 
-from pyring._sodium import ffi, lib
-from pyring.sc25519 import Scalar, L
+from pyring.sc25519 import L, Scalar
 
 
 def test_sc_constructors():
-    data = ffi.new("unsigned char[]", lib.crypto_core_ed25519_SCALARBYTES)
+    data = bytearray(sodium.crypto_core_ed25519_SCALARBYTES)
     data[0] = 3
-    assert Scalar(data) == 3
+    assert Scalar(bytes(data)) == 3
 
     assert Scalar(3) == 3
 
     nonreduced = (L + 3).to_bytes(
-        lib.crypto_core_ed25519_NONREDUCEDSCALARBYTES, "little"
+        sodium.crypto_core_ed25519_NONREDUCEDSCALARBYTES, "little"
     )
     assert Scalar.from_unreduced(nonreduced) == 3
 
@@ -36,11 +36,11 @@ def test_sc_constructors():
     assert Scalar(L + 1) + 0 == 1
 
     with pytest.raises(ValueError):
-        Scalar(b"0" * (lib.crypto_core_ed25519_SCALARBYTES - 1))
+        Scalar(b"0" * (sodium.crypto_core_ed25519_SCALARBYTES - 1))
 
     with pytest.raises(ValueError):
         Scalar.from_unreduced(
-            b"0" * (lib.crypto_core_ed25519_NONREDUCEDSCALARBYTES - 1)
+            b"0" * (sodium.crypto_core_ed25519_NONREDUCEDSCALARBYTES - 1)
         )
 
 

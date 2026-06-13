@@ -6,18 +6,18 @@ One-time ring signatures are described in a [CryptoNote whitepaper](https://web.
 
 ## Implementation
 
-This implementation follows the white-paper and CryptoNote implementation closely. The arithmetic is performed on the Ed25519 curve using [Sodium](https://libsodium.gitbook.io/doc/advanced/point-arithmetic) (ISC licensed). Sodium 1.0.18 is included with the package.
+This implementation follows the white-paper and CryptoNote implementation closely. The arithmetic is performed on the Ed25519 curve using [Sodium](https://libsodium.gitbook.io/doc/advanced/point-arithmetic), via the [PyNaCl](https://pynacl.readthedocs.io/) bindings.
 
 ## Installation and usage
 
-Clone the repository (including the Sodium submodule) and use `setup.py` to install the package.
+Clone the repository and use `setup.py` to install the package.
 
 ```bash
-git clone --recurse-submodules https://github.com/bartvm/pyring.git
+git clone https://github.com/bartvm/pyring.git
 python setup.py install
 ```
 
-Alternatively, use `python setup.py build` and `python setup.py develop` to build the library in-place.
+Alternatively, use `python setup.py develop` to install the library in-place.
 
 A simple command line interface is provided:
 
